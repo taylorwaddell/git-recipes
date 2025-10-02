@@ -140,7 +140,7 @@ export default function Home() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Search & Create
+            Better Recipes
           </h1>
           <p className="text-lg text-muted-foreground">
             Toggle between modes to search or create content
