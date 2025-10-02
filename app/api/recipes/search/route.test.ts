@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 import { NextRequest } from "next/server";
 import { POST } from "./route";
-import type { RecipeSavePayload } from "@/lib/types/recipe";
+import type { RecipeSearchResult } from "@/lib/types/recipe";
 import { getWeaviateClient } from "@/lib/weaviate/client";
 
 vi.mock("@/lib/weaviate/client", () => {
@@ -14,12 +14,7 @@ vi.mock("@/lib/weaviate/client", () => {
   };
 });
 
-describe("/api/recipes/save", () => {
-  const recipe: RecipeSavePayload = {
-    title: "Unit Test Recipe",
-    ingredients: ["1 tsp salt"],
-    sourceUrl: "https://example.com",
-  };
+describe("/api/recipes/search", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   beforeEach(() => {
@@ -35,7 +30,7 @@ describe("/api/recipes/save", () => {
   });
 
   it("returns 400 when payload is not valid JSON", async () => {
-    const request = new NextRequest("http://localhost/api/recipes/save", {
+    const request = new NextRequest("http://localhost/api/recipes/search", {
       method: "POST",
       body: "{ invalid",
     });
@@ -48,8 +43,8 @@ describe("/api/recipes/save", () => {
     });
   });
 
-  it("returns 400 when recipe payload is missing", async () => {
-    const request = new NextRequest("http://localhost/api/recipes/save", {
+  it("returns 400 when query is missing", async () => {
+    const request = new NextRequest("http://localhost/api/recipes/search", {
       method: "POST",
       body: JSON.stringify({}),
     });
@@ -57,48 +52,50 @@ describe("/api/recipes/save", () => {
     const response = await POST(request);
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data).toMatchObject({ error: expect.stringContaining("recipe") });
+    expect(data).toMatchObject({ error: expect.stringContaining("query") });
   });
 
-  it("persists the recipe using the Weaviate client", async () => {
-    const saveRecipe = vi.fn().mockResolvedValue({ id: "test-id" });
-    const searchRecipes = vi.fn().mockResolvedValue([]);
-    vi.mocked(getWeaviateClient).mockResolvedValue({
-      saveRecipe,
-      searchRecipes,
-    });
+  it("returns search results from the Weaviate client", async () => {
+    const mockResults: RecipeSearchResult[] = [
+      {
+        id: "recipe-1",
+        title: "Test Recipe",
+        ingredients: ["flour", "sugar"],
+        sourceUrl: "https://example.com/recipe",
+        score: 0.9,
+      },
+    ];
 
-    const request = new NextRequest("http://localhost/api/recipes/save", {
+    const searchRecipes = vi.fn().mockResolvedValue(mockResults);
+    vi.mocked(getWeaviateClient).mockResolvedValue({ searchRecipes } as any);
+
+    const request = new NextRequest("http://localhost/api/recipes/search", {
       method: "POST",
-      body: JSON.stringify({ recipe }),
+      body: JSON.stringify({ query: "cake" }),
     });
 
     const response = await POST(request);
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data).toEqual({ id: "test-id" });
-    expect(saveRecipe).toHaveBeenCalledWith(recipe);
+    expect(data).toEqual({ results: mockResults });
+    expect(searchRecipes).toHaveBeenCalledWith("cake");
   });
 
-  it("returns 502 when Weaviate rejects the save operation", async () => {
+  it("returns 502 when Weaviate rejects the search operation", async () => {
     const error = new Error("Weaviate is down");
-    const saveRecipe = vi.fn().mockRejectedValue(error);
-    const searchRecipes = vi.fn().mockResolvedValue([]);
-    vi.mocked(getWeaviateClient).mockResolvedValue({
-      saveRecipe,
-      searchRecipes,
-    });
+    const searchRecipes = vi.fn().mockRejectedValue(error);
+    vi.mocked(getWeaviateClient).mockResolvedValue({ searchRecipes } as any);
 
-    const request = new NextRequest("http://localhost/api/recipes/save", {
+    const request = new NextRequest("http://localhost/api/recipes/search", {
       method: "POST",
-      body: JSON.stringify({ recipe }),
+      body: JSON.stringify({ query: "test" }),
     });
 
     const response = await POST(request);
     expect(response.status).toBe(502);
     const data = await response.json();
     expect(data).toMatchObject({
-      error: expect.stringContaining("Failed to save"),
+      error: expect.stringContaining("Failed to search"),
     });
   });
 });

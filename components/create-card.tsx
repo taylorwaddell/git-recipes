@@ -1,27 +1,37 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { RecipeScrapeResult } from "@/lib/types/recipe";
-import { Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreateCardProps {
   recipe: RecipeScrapeResult;
   onSave?: () => Promise<void> | void;
   isSaving?: boolean;
+  isSaved?: boolean;
+  saveError?: string | null;
+  savedRecipeId?: string | null;
 }
 
 export function CreateCard({
   recipe,
   onSave,
   isSaving = false,
+  isSaved = false,
+  saveError = null,
+  savedRecipeId = null,
 }: CreateCardProps) {
   const { toast } = useToast();
 
   const handleSave = async () => {
+    if (isSaved || isSaving) {
+      return;
+    }
+
     if (onSave) {
       await onSave();
       return;
@@ -56,13 +66,32 @@ export function CreateCard({
           onClick={handleSave}
           size="sm"
           className="gap-2"
-          disabled={isSaving}
+          disabled={isSaving || isSaved}
         >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? "Saving..." : isSaved ? "Saved" : "Save"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        {isSaved && (
+          <Alert className="border-green-500/50 bg-green-500/5 text-foreground">
+            <AlertTitle className="text-sm font-semibold">
+              Recipe saved successfully
+            </AlertTitle>
+            <AlertDescription className="text-sm">
+              {savedRecipeId
+                ? `Your recipe is stored with ID ${savedRecipeId}.`
+                : "Your recipe is safely stored."}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {saveError && !isSaving && (
+          <Alert variant="destructive">
+            <AlertTitle>Failed to save recipe</AlertTitle>
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        )}
+
         <div>
           <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
             Ingredients

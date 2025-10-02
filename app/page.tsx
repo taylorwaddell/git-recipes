@@ -1,30 +1,65 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RecipeScrapeResult, RecipeSearchResult } from "@/lib/types/recipe";
+import { useCallback, useState } from "react";
 
 import { CreateCard } from "@/components/create-card";
-import { RecipeScrapeResult } from "@/lib/types/recipe";
 import { ResultsGrid } from "@/components/results-grid";
 import { SearchForm } from "@/components/search-form";
-import { useState } from "react";
+import { saveRecipeToApi } from "@/lib/recipes/save-client";
+import { searchRecipesFromApi } from "@/lib/recipes/search-client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [mode, setMode] = useState<"search" | "create">("search");
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<RecipeSearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<RecipeScrapeResult | null>(null);
   const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleModeChange = useCallback((nextMode: "search" | "create") => {
+    setMode(nextMode);
+    setShowResults(false);
+    setSearchResults([]);
+    setSearchError(null);
+    setRecipe(null);
+    setScrapeError(null);
+    setSavedRecipeId(null);
+    setSaveError(null);
+    setIsSaving(false);
+  }, []);
 
   const handleSubmit = async (query: string) => {
     setIsLoading(true);
     setShowResults(false);
+    setSearchResults([]);
+    setSearchError(null);
     setRecipe(null);
     setScrapeError(null);
+    setSavedRecipeId(null);
+    setSaveError(null);
 
     if (mode === "search") {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setShowResults(true);
-      setIsLoading(false);
+      try {
+        const { results } = await searchRecipesFromApi(query);
+        setSearchResults(results);
+        setShowResults(true);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't search recipes. Please try again.";
+        setSearchError(message);
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -61,6 +96,45 @@ export default function Home() {
     }
   };
 
+  const handleSaveRecipe = useCallback(async () => {
+    if (!recipe || isSaving) {
+      return;
+    }
+
+    if (savedRecipeId) {
+      toast({
+        title: "Recipe already saved",
+        description: "This recipe is already stored in Weaviate.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const { id } = await saveRecipeToApi(recipe);
+      setSavedRecipeId(id);
+      toast({
+        title: "Recipe saved",
+        description: "Your recipe is now stored in Weaviate.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't save your recipe. Please try again.";
+      setSaveError(message);
+      toast({
+        title: "Save failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaving, recipe, savedRecipeId, toast]);
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -75,7 +149,7 @@ export default function Home() {
 
         <SearchForm
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={handleModeChange}
           onSubmit={handleSubmit}
         />
 
@@ -90,9 +164,16 @@ export default function Home() {
           </div>
         )}
 
+        {mode === "search" && searchError && !isLoading && (
+          <Alert variant="destructive" className="mt-12">
+            <AlertTitle>Unable to search recipes</AlertTitle>
+            <AlertDescription>{searchError}</AlertDescription>
+          </Alert>
+        )}
+
         {mode === "search" && showResults && !isLoading && (
           <div className="mt-12">
-            <ResultsGrid />
+            <ResultsGrid recipes={searchResults} />
           </div>
         )}
 
@@ -105,7 +186,14 @@ export default function Home() {
 
         {mode === "create" && recipe && !isLoading && (
           <div className="mt-12">
-            <CreateCard recipe={recipe} />
+            <CreateCard
+              recipe={recipe}
+              onSave={handleSaveRecipe}
+              isSaving={isSaving}
+              isSaved={Boolean(savedRecipeId)}
+              saveError={saveError}
+              savedRecipeId={savedRecipeId}
+            />
           </div>
         )}
       </div>
