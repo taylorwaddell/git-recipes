@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   scrapeRecipeFromUrl,
-  RecipeScrapeNotImplementedError,
+  RecipeScrapeParseError,
+  RecipeScrapeRequestError,
 } from "@/lib/recipes/scraper";
 
 interface ScrapeRequestBody {
@@ -37,8 +38,18 @@ export async function POST(request: NextRequest) {
     const recipe = await scrapeRecipeFromUrl(url);
     return NextResponse.json(recipe);
   } catch (error) {
-    if (error instanceof RecipeScrapeNotImplementedError) {
-      return NextResponse.json({ error: error.message }, { status: 501 });
+    if (error instanceof RecipeScrapeRequestError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
+    if (error instanceof RecipeScrapeParseError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
     }
 
     console.error("Failed to scrape recipe", error);

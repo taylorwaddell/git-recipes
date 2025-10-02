@@ -1,31 +1,30 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { Plus, Search } from "lucide-react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Plus } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type React from "react";
+import { useState } from "react";
 
 interface SearchFormProps {
-  mode: "search" | "create"
-  onModeChange: (mode: "search" | "create") => void
-  onSubmit: (query: string) => void
+  mode: "search" | "create";
+  onModeChange: (mode: "search" | "create") => void;
+  onSubmit: (query: string) => void;
 }
 
 export function SearchForm({ mode, onModeChange, onSubmit }: SearchFormProps) {
-  const [query, setQuery] = useState("")
-  const { toast } = useToast()
+  const [query, setQuery] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!query.trim()) return
+    const trimmed = query.trim();
+    if (!trimmed) return;
 
-    onSubmit(query)
-    setQuery("")
-  }
+    onSubmit(trimmed);
+    setQuery("");
+  };
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -51,7 +50,11 @@ export function SearchForm({ mode, onModeChange, onSubmit }: SearchFormProps) {
       <form onSubmit={handleSubmit} className="flex gap-3">
         <Input
           type="text"
-          placeholder={mode === "search" ? "Search for content..." : "Enter content to create..."}
+          placeholder={
+            mode === "search"
+              ? "Search for recipes..."
+              : "Paste a recipe URL..."
+          }
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="h-12 text-base"
@@ -61,5 +64,5 @@ export function SearchForm({ mode, onModeChange, onSubmit }: SearchFormProps) {
         </Button>
       </form>
     </div>
-  )
+  );
 }

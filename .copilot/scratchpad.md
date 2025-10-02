@@ -11,6 +11,7 @@
 - Data extraction & normalization: Map scraped data into a consistent schema (title, ingredients array, captured sourceUrl) while handling missing fields and ensuring sanitization to avoid XSS. Preserve extensibility for instructions/notes later.
 - Markdown/formatting: For MVP we can render scraped data in simple components; markdown conversion becomes optional once instructions are added.
 - UI integration: Replace placeholder create workflow with async call to new API, manage loading/error states, and surface scraped data with save controls.
+- Save UX: Persisting recipes now requires client-side state management for optimistic updates, duplicate submissions, and user feedback (toast/alert) when writes succeed or fail.
 - Persistence & vectorization: Define backend call to Weaviate with proper authentication, schema, and payload including vectorization fields, ensuring saved recipes store at least title/ingredients and optional metadata.
 - Search experience: Replace mock `ResultsGrid` with data fetched from Weaviate query endpoint, support search input, empty states, and fallback messaging.
 - Observability & logging: Integrate Opik to capture AI/Weaviate interactions, manage flush lifecycle, and parameterize config via env vars.
@@ -30,24 +31,37 @@
 # Project Status Board
 
 - [x] Define recipe data contracts
-- [ ] Implement scraping service
-- [ ] Create recipe generation API endpoint
-- [ ] Wire create mode UI to API + markdown renderer
+- [x] Implement scraping service
+- [x] Create recipe generation API endpoint
+- [x] Wire create mode UI to API + markdown renderer
 - [ ] Build save + Weaviate persistence flow (MVP)
+  - [x] Save API route + Weaviate client helper implemented
+  - [ ] Wire create flow save button to persistence
 - [ ] Integrate Opik telemetry for save/search
 - [ ] Replace mock search with real vector search
 - [ ] Add tests & documentation updates
 
 # Current Status / Progress Tracking
 
-- Recipe type definitions created in `lib/types/recipe.ts`; ready to wire into scraper and API layers.
-- Scaffolded `scrapeRecipeFromUrl` utility and `/api/recipes/scrape` POST route; both currently throw not implemented errors for future work.
-- Added Weaviate config helper, client placeholder, and Opik tracing stub to unblock upcoming persistence/search tasks.
+- Recipe type definitions created in `lib/types/recipe.ts`.
+- Recipe scraping implemented with JSON-LD + DOM fallbacks and unit tests (`lib/recipes/scraper.test.ts`).
+- `/api/recipes/scrape` POST returns normalized title/ingredients data with rich error responses.
+- Cheerio & Vitest dependencies added; `pnpm test` runs scraper test suite.
+- Weaviate config/client scaffolding and Opik tracing helper in place for upcoming persistence work.
+- Create flow now calls `/api/recipes/scrape`, displays loading/error states, and renders recipe title + ingredients in `CreateCard`.
+- Implemented Weaviate save API route and HTTP client helper with tests; ready to wire UI save action next.
 
 ## Immediate Next Steps
 
-1. Implement `scrapeRecipeFromUrl` fetching/parsing logic with accompanying unit tests covering happy and failure paths.
-2. Flesh out `/api/recipes/scrape` handling (success + error scenarios) and ensure responses align with frontend expectations once scraping is functional.
+1. **Wire create flow save button to persistence**
+  - Add save handler in `app/page.tsx` that posts the scraped recipe to `/api/recipes/save`.
+  - Forward `onSave`, `isSaving`, and success/error messaging into `CreateCard`; surface results via toast and/or inline alert.
+  - Preserve the scraped recipe in state after save and guard against duplicate submissions (disable button, show spinner text).
+  - Write a lightweight component test (or RTL/Vitest hook test) if feasible to ensure the save handler handles success/error paths.
+2. **Prepare search integration plan**
+  - Outline the Weaviate query API shape and how it maps to `RecipeSearchResult`.
+  - Identify UI updates required in `SearchForm`/`ResultsGrid` to consume real results (loading states, empty messaging).
+  - Note telemetry touchpoints to fold in when wiring the search endpoint.
 
 # Executor's Feedback or Assistance Requests
 
