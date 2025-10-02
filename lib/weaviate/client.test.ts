@@ -13,7 +13,11 @@ import {
 vi.mock("@/lib/opik/tracing", () => {
   return {
     trackExternalOperation: vi.fn(
-      async (_operation: string, execute: () => Promise<unknown>) => execute()
+      async (
+        _operation: string,
+        _context: unknown,
+        execute: () => Promise<unknown>
+      ) => execute()
     ),
   };
 });

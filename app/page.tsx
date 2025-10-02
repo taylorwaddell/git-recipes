@@ -143,7 +143,7 @@ export default function Home() {
             Better Recipes
           </h1>
           <p className="text-lg text-muted-foreground">
-            Search recipes or scrape one in create mode to save it.
+            Search your saved recipes or scrape one in create mode to save it.
           </p>
         </div>
 
