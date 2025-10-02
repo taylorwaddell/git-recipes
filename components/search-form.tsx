@@ -60,7 +60,7 @@ export function SearchForm({ mode, onModeChange, onSubmit }: SearchFormProps) {
           className="h-12 text-base"
         />
         <Button type="submit" size="lg" className="px-8">
-          Submit
+          {mode === "search" ? "Search" : "Create"}
         </Button>
       </form>
     </div>
